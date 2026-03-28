@@ -49,10 +49,10 @@ The Sequential Test builds synthetic light curves for binary classification: `1`
 ### Run From Repository Root
 
 ```bash
-python Sequential_Test/src/generate_data.py
-python Sequential_Test/src/train.py
-python Sequential_Test/src/evaluate.py
-python Sequential_Test/src/infer.py --input_npy sample_curve.npy
+python3 Sequential_Test/src/generate_data.py
+python3 Sequential_Test/src/train.py
+python3 Sequential_Test/src/evaluate.py
+python3 Sequential_Test/src/infer.py --input_npy sample_curve.npy
 ```
 
 ### What Each Step Produces
