@@ -27,8 +27,11 @@ The code is designed to be runnable with minimal user intervention and to produc
 │   ├── notebooks/
 │   │   └── general.ipynb
 │   └── src/
+│       ├── data.py
+│       ├── model.py
 │       ├── train.py
-│       ├── infer.py
+│       ├── cluster.py
+│       ├── run_baseline.py
 │       └── utils.py
 └── Sequential_Test/
     ├── notebooks/
@@ -41,6 +44,25 @@ The code is designed to be runnable with minimal user intervention and to produc
         ├── infer.py
         └── utils.py
 ```
+
+## General Test
+
+The General Test baseline trains a convolutional autoencoder on preprocessed FITS images, then clusters the learned latent vectors with k-means. The pipeline is designed for reviewer-friendly execution and saves all artifacts under `outputs/general/`.
+
+### Run From Repository Root
+
+```bash
+python General_Test/src/train.py --data_dir path/to/fits_dir
+python General_Test/src/cluster.py --data_dir path/to/fits_dir --checkpoint_path checkpoints/general/best_autoencoder.pt
+```
+
+Optional one-shot convenience command:
+
+```bash
+python General_Test/src/run_baseline.py --data_dir path/to/fits_dir
+```
+
+See `General_Test/README.md` for the focused baseline notes and CLI options.
 
 ## Sequential Test
 
