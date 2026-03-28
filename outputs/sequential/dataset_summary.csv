@@ -1,0 +1,4 @@
+split,size,positives,negatives,positive_fraction,sequence_length
+train,2800,1400,1400,0.5,256
+val,600,300,300,0.5,256
+test,600,300,300,0.5,256

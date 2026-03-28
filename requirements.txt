@@ -1,0 +1,16 @@
+numpy
+scipy
+pandas
+matplotlib
+scikit-learn
+astropy
+torch
+torchvision
+tqdm
+jupyter
+pyyaml
+umap-learn
+pillow
+hdbscan
+pytorch-msssim
+pytransit
