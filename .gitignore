@@ -1,4 +1,29 @@
+# env
 .venv/
 venv/
+
+# python
 __pycache__/
 *.pyc
+
+# data
+data/
+*.fits
+
+# outputs (temporary experiments)
+outputs/
+
+# checkpoints (large files)
+checkpoints/
+
+# experiments archive
+archive/
+
+# numpy
+*.npy
+
+# notebooks
+*.ipynb
+
+# logs
+*.log

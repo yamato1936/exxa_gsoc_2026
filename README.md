@@ -1,91 +1,210 @@
-# EXXA GSoC 2026 Submission
+# EXXA GSoC 2026 — Representation Learning for Astronomical Data
 
-This repository contains my submission for the ML4SCI EXXA GSoC 2026 tests.
+## Overview
 
-It includes:
+This project tackles two tasks:
 
-- **General Test**: unsupervised clustering of synthetic ALMA protoplanetary disk images (`.fits`)
-- **Sequential Test**: simulated transit curve classification for exoplanet detection
+- **General Test**: Unsupervised clustering of protoplanetary disk images
+- **Sequential Test**: Transit detection from synthetic light curves
 
-The code is designed to be runnable with minimal user intervention and to produce clear visual outputs for quick evaluation. For the Sequential Test specifically, the goal is to simulate transit curves, train a classifier for planet presence, and report ROC/AUC while handling noisy observations in a reviewer-friendly way.
+The focus is on learning **meaningful representations**, not just fitting models.
+
+---
+
+## Key Idea
+
+> Good clustering requires geometry-aware representations, not just reconstruction.
+
+We compare:
+
+- Autoencoder (reconstruction-based)
+- Contrastive learning (SimCLR)
+
+---
+
+## Results (General Test)
+
+| Method | Silhouette |
+|--------|-----------|
+| Autoencoder (Phase 2) | 0.362 |
+| SimCLR (Phase 3, 3 epochs) | **0.459** |
+
+- Clear improvement in cluster separability  
+- Better morphological grouping  
+
+---
+
+## Critical Insight
+
+> Longer contrastive training hurts clustering
+
+- 3 epochs → best  
+- 5+ epochs → degradation  
+
+**Reason**
+
+Contrastive learning increasingly focuses on instance discrimination,
+which conflicts with clustering objectives.
+
+---
+
+## Experiment Progression (General Test)
+
+We followed a two-stage approach:
+
+### Phase 2 — Autoencoder baseline
+- Objective: reconstruction
+- Result: silhouette = 0.362
+
+### Phase 3 — Contrastive learning (SimCLR)
+- Objective: instance discrimination
+- Result: silhouette = 0.459 (best at 3 epochs)
+
+### Key Finding
+
+Early-stage contrastive representations capture global structure,  
+while longer training overfits to instance identity and degrades clustering.
+
+---
+
+## Visualization
+
+### UMAP projection
+
+![UMAP](General_Test/experiments/phase3/simclr_rot15_flip_e3_best/clusters/umap.png)
+
+### Cluster mean examples
+
+![Cluster Mean](General_Test/experiments/phase3/simclr_rot15_flip_e3_best/clusters/cluster_0_mean.png)
+
+---
+
+## Final Selected Models
+
+### General Test
+- Phase 2: `ae_log_latent128_l2_best`
+- Phase 3: `simclr_rot15_flip_e3_best` (final model)
+
+### Selection Criteria
+- Quantitative: silhouette score
+- Qualitative: UMAP separation and cluster consistency
+
+---
+
+## Experiment Artifacts Structure
+
+Each experiment follows a consistent structure:
+
+    experiments/<phase>/<experiment_name>/
+    ├── checkpoints/     # trained model weights
+    ├── train/           # training logs and visualizations
+    ├── latents/         # extracted feature representations
+    ├── clusters/        # clustering results and analysis
+
+### Example
+
+    General_Test/experiments/phase3/simclr_rot15_flip_e3_best/
+
+    ├── checkpoints/
+    │   └── best_contrastive.pt
+
+    ├── train/
+    │   ├── loss_curve.png
+    │   └── train_history.json
+
+    ├── latents/
+    │   ├── latent_vectors.npy
+    │   └── latent_metadata.csv
+
+    ├── clusters/
+    │   ├── umap.png
+    │   ├── cluster_*_mean.png
+    │   └── cluster_summary.json
 
 ---
 
 ## Repository Structure
 
-```text
-.
-├── README.md
-├── requirements.txt
-├── checkpoints/
-│   ├── general/
-│   └── sequential/
-├── outputs/
-│   ├── general/
-│   └── sequential/
-├── General_Test/
-│   ├── notebooks/
-│   │   └── general.ipynb
-│   └── src/
-│       ├── data.py
-│       ├── model.py
-│       ├── train.py
-│       ├── cluster.py
-│       ├── run_baseline.py
-│       └── utils.py
-└── Sequential_Test/
-    ├── notebooks/
-    │   └── train.ipynb
-    └── src/
-        ├── generate_data.py
-        ├── model.py
-        ├── train.py
-        ├── evaluate.py
-        ├── infer.py
-        └── utils.py
-```
+    General_Test/
+    ├── experiments/
+    │   ├── phase2/
+    │   └── phase3/
 
-## General Test
+    Sequential_Test/
+    ├── outputs/
 
-The General Test baseline trains a convolutional autoencoder on preprocessed FITS images, then clusters the learned latent vectors with k-means. The pipeline is designed for reviewer-friendly execution and saves all artifacts under `outputs/general/`.
+    archive/
+    data/
 
-### Run From Repository Root
+---
 
+## Directory Details
+
+### General_Test/
+- `src/` : training, feature extraction, clustering
+- `experiments/` : final selected experiments only
+- `run_*.sh` : reproducible experiment scripts
+
+### Sequential_Test/
+- `src/` : training and evaluation pipeline
+- `outputs/` : results (figures, metrics, predictions)
+
+### data/
+- FITS files (excluded via `.gitignore`)
+
+### archive/
+- old or exploratory experiments (not part of final results)
+
+---
+
+## Quick Start
+
+### General Test (best model)
+
+cd General_Test
+
+# extract latents
 ```bash
-python General_Test/src/train.py --data_dir path/to/fits_dir
-python General_Test/src/cluster.py --data_dir path/to/fits_dir --checkpoint_path checkpoints/general/best_autoencoder.pt
+python src/extract_contrastive_latents.py \
+  --data_dir ../data/fits \
+  --checkpoint_path experiments/phase3/simclr_rot15_flip_e3_best/checkpoints/best_contrastive.pt \
+  --output_dir experiments/phase3/simclr_rot15_flip_e3_best/latents \
+  --preprocess_mode log_minmax \
+  --lower_percentile 1.0 \
+  --upper_percentile 99.5 \
+  --l2_normalize_latents
 ```
 
-Optional one-shot convenience command:
-
+# clustering
 ```bash
-python General_Test/src/run_baseline.py --data_dir path/to/fits_dir
+python src/cluster.py \
+  --latent_path experiments/phase3/simclr_rot15_flip_e3_best/latents/phase3/simclr_rot30_latent128/latents/latent_vectors.npy \
+  --metadata_csv experiments/phase3/simclr_rot15_flip_e3_best/latents/phase3/simclr_rot30_latent128/latents/latent_metadata.csv \
+  --metadata_json experiments/phase3/simclr_rot15_flip_e3_best/latents/phase3/simclr_rot30_latent128/latents/latent_metadata.json \
+  --output_dir experiments/phase3/simclr_rot15_flip_e3_best/clusters \
+  --phase phase3 \
+  --n_clusters 4
 ```
 
-See `General_Test/README.md` for the focused baseline notes and CLI options.
+---
 
-## Sequential Test
+## Notes
 
-The Sequential Test builds synthetic light curves for binary classification: `1` means a periodic transit signal is present and `0` means no planet transit is present. The pipeline is designed for low-friction review: it generates harder positives and negatives, trains a compact 1D CNN, tunes the final decision threshold on the validation split, and saves plots plus CSV/JSON outputs for quick inspection.
+- Raw FITS data (`data/fits/`) is excluded via `.gitignore`
+- Large artifacts (outputs, checkpoints) are not tracked
 
-### Run From Repository Root
+---
 
-```bash
-python3 Sequential_Test/src/generate_data.py
-python3 Sequential_Test/src/train.py
-python3 Sequential_Test/src/evaluate.py
-python3 Sequential_Test/src/infer.py --input_npy sample_curve.npy
-```
+## Reproducibility
 
-### What Each Step Produces
+See:
 
-- `generate_data.py` writes `outputs/sequential/X_{train,val,test}.npy`, `y_{train,val,test}.npy`, `synthetic_examples.png`, and `dataset_summary.csv`.
-- `train.py` writes `checkpoints/sequential/best_model.pt`, `outputs/sequential/loss_curve.png`, `outputs/sequential/val_auc_curve.png`, and `outputs/sequential/training_summary.json`.
-- `evaluate.py` loads the saved best checkpoint, reports ROC-AUC and Average Precision, tunes the classification threshold on the validation split, and writes `metrics.json`, `predictions.csv`, ROC/PR curves, a tuned-threshold confusion matrix, a threshold sweep plot, and false-positive/false-negative example panels.
-- `infer.py` loads `checkpoints/sequential/best_model.pt`, normalizes a single input curve, reports the predicted probability plus labels at threshold `0.5` and the tuned threshold from `outputs/sequential/metrics.json` when available, and saves `outputs/sequential/infer_example.png`.
+- `General_Test/README.md`  
+- `Sequential_Test/README.md`  
 
-### Reviewer Notes
+---
 
-- Place pretrained Sequential weights at `checkpoints/sequential/best_model.pt` if you want to skip training.
-- Evaluation is intended to support low-friction scoring on withheld data: run inference on any single 1D `.npy` light curve and the script will reuse the saved best checkpoint automatically.
-- All Sequential outputs are saved under `outputs/sequential/` so reviewers can inspect the full submission without digging through the code.
+## Conclusion
+
+Contrastive learning improves clustering —  
+but only when stopped early.

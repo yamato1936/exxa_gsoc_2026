@@ -33,6 +33,56 @@ def project_path(*parts: str) -> str:
     return str(repo_root().joinpath(*parts))
 
 
+def experiment_root_dir(
+    output_dir: str | Path,
+    experiment_name: str | None = None,
+    phase: str = "phase2",
+) -> Path:
+    base_dir = Path(output_dir)
+    if experiment_name:
+        base_dir = base_dir / phase / experiment_name
+    return ensure_dir(base_dir)
+
+
+def stage_output_dir(
+    output_dir: str | Path,
+    experiment_name: str | None = None,
+    stage: str | None = None,
+    phase: str = "phase2",
+) -> Path:
+    base_dir = experiment_root_dir(output_dir, experiment_name, phase=phase)
+    if experiment_name and stage:
+        base_dir = base_dir / stage
+    return ensure_dir(base_dir)
+
+
+def checkpoint_dir_for_run(
+    output_dir: str | Path,
+    checkpoint_dir: str | Path,
+    experiment_name: str | None = None,
+    phase: str = "phase2",
+) -> Path:
+    if experiment_name:
+        return ensure_dir(experiment_root_dir(output_dir, experiment_name, phase=phase) / "checkpoints")
+    return ensure_dir(checkpoint_dir)
+
+
+def build_experiment_name(
+    preprocess_mode: str,
+    use_augmentation: bool,
+    latent_dim: int,
+    n_clusters: int | None = None,
+) -> str:
+    parts = [
+        preprocess_mode,
+        "aug" if use_augmentation else "noaug",
+        f"ld{int(latent_dim)}",
+    ]
+    if n_clusters is not None:
+        parts.append(f"k{int(n_clusters)}")
+    return "_".join(parts)
+
+
 def ensure_dir(path: str | Path) -> Path:
     path_obj = Path(path)
     path_obj.mkdir(parents=True, exist_ok=True)
@@ -109,6 +159,8 @@ def save_loss_curve(
     val_losses: Iterable[float],
     out_path: str | Path,
     best_epoch: Optional[int] = None,
+    ylabel: str = "MSE",
+    title: str = "Autoencoder Reconstruction Loss",
 ) -> None:
     train_losses = list(train_losses)
     val_losses = list(val_losses)
@@ -120,8 +172,8 @@ def save_loss_curve(
     if best_epoch is not None:
         ax.axvline(best_epoch, color="tab:green", linestyle="--", alpha=0.7, label="best_epoch")
     ax.set_xlabel("Epoch")
-    ax.set_ylabel("MSE")
-    ax.set_title("Autoencoder Reconstruction Loss")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
@@ -246,11 +298,29 @@ def save_image_grid(
     plt.close(fig)
 
 
+def save_single_image(
+    image: np.ndarray,
+    out_path: str | Path,
+    title: Optional[str] = None,
+) -> None:
+    image = np.asarray(image, dtype=np.float32)
+
+    fig, ax = plt.subplots(figsize=(4.8, 4.8))
+    ax.imshow(image, cmap="inferno", vmin=0.0, vmax=1.0)
+    ax.axis("off")
+    if title is not None:
+        ax.set_title(title)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
 def save_embedding_plot(
     embedding: np.ndarray,
     labels: np.ndarray,
     out_path: str | Path,
     title: str,
+    cluster_sizes: Optional[dict[int, int]] = None,
 ) -> None:
     embedding = np.asarray(embedding, dtype=np.float32)
     labels = np.asarray(labels)
@@ -261,17 +331,53 @@ def save_embedding_plot(
 
     for idx, label in enumerate(unique_labels):
         mask = labels == label
+        legend_label = f"cluster {int(label)}"
+        if cluster_sizes is not None:
+            legend_label = f"{legend_label} (n={int(cluster_sizes.get(int(label), 0))})"
         ax.scatter(
             embedding[mask, 0],
             embedding[mask, 1],
             s=28,
             alpha=0.85,
             color=cmap(idx % 10),
-            label=f"cluster {int(label)}",
+            label=legend_label,
         )
 
     ax.set_xlabel("component_1")
     ax.set_ylabel("component_2")
+    ax.set_title(title)
+    ax.grid(True, alpha=0.25)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+def save_radial_profile_plot(
+    profiles: list[dict[str, Any]],
+    out_path: str | Path,
+    title: str = "Cluster Mean Radial Profiles",
+) -> None:
+    if not profiles:
+        fig, ax = plt.subplots(figsize=(6, 2.5))
+        ax.axis("off")
+        ax.text(0.5, 0.5, "No radial profiles available.", ha="center", va="center")
+        fig.tight_layout()
+        fig.savefig(out_path, dpi=200)
+        plt.close(fig)
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for profile in profiles:
+        ax.plot(
+            profile["radius"],
+            profile["intensity"],
+            linewidth=2.0,
+            label=profile["label"],
+        )
+
+    ax.set_xlabel("Radius (pixels)")
+    ax.set_ylabel("Mean Intensity")
     ax.set_title(title)
     ax.grid(True, alpha=0.25)
     ax.legend()

@@ -1,0 +1,44 @@
+{
+  "phase": "phase3",
+  "data_dir": "/home/toshi/GSoC/data/fits",
+  "experiment_name": "debug_simclr",
+  "experiment_root": "outputs/general/phase3/phase3/debug_simclr",
+  "train_output_dir": "outputs/general/phase3/phase3/debug_simclr/train",
+  "checkpoint_path": "outputs/general/phase3/phase3/debug_simclr/checkpoints/best_contrastive.pt",
+  "num_discovered_fits_files": 150,
+  "num_valid_files": 150,
+  "num_skipped_files": 0,
+  "skipped_files": [],
+  "split": {
+    "num_train": 120,
+    "num_val": 30,
+    "val_ratio": 0.2,
+    "validation_reuses_training": false,
+    "contrastive_validation_reuses_training": false
+  },
+  "normalization": {
+    "mode": "log_minmax",
+    "lower_percentile": 1.0,
+    "upper_percentile": 99.5,
+    "robust_clip": 5.0,
+    "output_range": [
+      0.0,
+      1.0
+    ]
+  },
+  "model": {
+    "latent_dim": 128,
+    "projection_dim": 64,
+    "temperature": 0.1
+  },
+  "augmentation": {
+    "enabled": true,
+    "rotation_deg": 15.0,
+    "hflip_prob": 0.5,
+    "vflip_prob": 0.5,
+    "noise_std": 0.0
+  },
+  "sample_input_figure": "outputs/general/phase3/phase3/debug_simclr/train/sample_inputs.png",
+  "augmented_pair_figure": "outputs/general/phase3/phase3/debug_simclr/train/augmented_pairs.png",
+  "loss_curve_figure": "outputs/general/phase3/phase3/debug_simclr/train/loss_curve.png"
+}

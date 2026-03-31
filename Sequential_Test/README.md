@@ -1,231 +1,138 @@
-# Sequential Test — Transit Detection from Synthetic Light Curves
+# Sequential Test — Transit Detection
 
 ## Overview
 
-This task focuses on detecting exoplanet transits from 1D light curves.
-We simulate realistic transit signals with noise and train a binary classifier to determine whether a planet is present.
+Detect exoplanet transit signals from synthetic light curves.
 
-The pipeline is fully automated:
-
-* synthetic data generation
-* model training
-* evaluation with ROC/AUC
-* threshold tuning
-* inference on new data
+We focus on realistic data generation and robust classification under noise.
 
 ---
 
-## Problem Definition
+## Problem
 
-Given a time-series light curve:
+Input:
+- 1D light curve (flux over time)
 
-* **Input**: normalized flux over time (1D array)
-* **Output**: probability of planet transit (binary classification)
-
-Label:
-
-* `1`: transit signal present
-* `0`: no transit
+Output:
+- probability of transit (binary classification)
 
 ---
 
-## Synthetic Data Generation
+## Key Idea
 
-We generate light curves designed to approximate real observational challenges.
+Performance comes from **data design**, not model complexity.
 
-### Signal Modeling
+- realistic noise modeling
+- hard negative sampling
+- threshold optimization
 
-Each positive sample includes:
+---
 
-* periodic transit dips
-* varying **depth** (planet size proxy)
-* varying **duration**
-* random **phase shift**
+## Data Generation
 
-### Noise & Artifacts
+We simulate realistic observational conditions:
 
-To simulate realistic conditions:
-
-* Gaussian noise
-* baseline trends (low-frequency drift)
-* random spikes / irregular fluctuations
+- periodic transit dips (variable depth, duration, phase)
+- Gaussian noise
+- baseline drift
+- random spikes
 
 ### Hard Negatives
 
-Negative samples are not purely random:
+Negative samples include:
 
-* quasi-periodic signals
-* sharp noise spikes
-* trend-dominated curves
+- quasi-periodic signals
+- spike-dominated curves
+- trend-heavy signals
 
-This prevents the model from learning trivial patterns.
+This prevents trivial classification.
 
 ---
 
 ## Model
 
-We use a lightweight **1D CNN**:
+Lightweight 1D CNN
 
-* captures local dip structures
-* efficient and fast to train
-* robust to small temporal shifts
-
-Rationale:
-
-* transit signals are local patterns (dips)
-* CNNs are well-suited for this structure
+- captures local dip structure
+- efficient and stable
+- robust to small shifts
 
 ---
 
 ## Training
 
-* Loss: Binary Cross Entropy
-* Early stopping based on **validation AUC**
-* Best model checkpoint saved
-
-```bash
-python3 Sequential_Test/src/train.py
-```
+- Loss: Binary Cross Entropy
+- Early stopping on validation AUC
+- Best checkpoint saved
 
 ---
 
-## Evaluation
+## Results
 
-We evaluate using threshold-independent and threshold-dependent metrics.
-
-### Metrics
-
-* **ROC-AUC** (primary metric)
-* **Average Precision (AP)**
-* **F1 score (for threshold tuning)**
-
-### Results
-
-* Test ROC-AUC: **0.9006**
-* Average Precision: **0.9222**
-* Best validation AUC: **0.9104**
-
-```bash
-python3 Sequential_Test/src/evaluate.py
-```
+- Test ROC-AUC: 0.9006
+- Average Precision: 0.9222
+- Best validation AUC: 0.9104
 
 ---
 
-## Threshold Selection
+## Threshold Optimization
 
-The default threshold (0.5) is suboptimal under noisy conditions.
-
-We tune the threshold on the validation set to maximize F1:
-
-* Best threshold: **0.185**
+Best threshold: 0.185
 
 Reason:
-
-* improves recall for weak or noisy transit signals
-* reduces false negatives in ambiguous cases
+- improves recall under noisy conditions
+- reduces missed weak transit signals
 
 ---
 
 ## Error Analysis
 
-We explicitly analyze failure cases.
-
 ### False Negatives
-
-Common patterns:
-
-* shallow transit depth
-* high noise masking periodic dips
+- shallow transit
+- noise masking signal
 
 ### False Positives
-
-Common patterns:
-
-* sharp noise spikes misclassified as transits
-* strong trends mistaken for periodic signals
-
-### Insight
-
-These suggest potential improvements:
-
-* detrending preprocessing
-* periodicity-aware models (e.g., Fourier features, transformers)
-* harder negative mining
+- spikes misclassified as transits
+- strong trends mistaken as periodicity
 
 ---
 
 ## Outputs
 
-All outputs are saved to:
+Stored in:
 
-```
-outputs/sequential/
-```
+    outputs/
 
 Includes:
 
-* ROC curve
-* Precision-Recall curve
-* confusion matrix (tuned threshold)
-* threshold sweep
-* false positive / negative examples
-* training curves
-
----
-
-## Inference
-
-Run inference on a new light curve:
-
-```bash
-python3 Sequential_Test/src/infer.py --input_npy sample_curve.npy
-```
-
-Output:
-
-* predicted probability
-* label @ 0.5 threshold
-* label @ tuned threshold
-* visualization plot
+- ROC curve
+- PR curve
+- confusion matrix
+- threshold sweep
+- error examples
 
 ---
 
 ## Reproducibility
 
-Full pipeline:
+Run full pipeline:
 
 ```bash
-python Sequential_Test/src/generate_data.py
-python Sequential_Test/src/train.py
-python Sequential_Test/src/evaluate.py
+    python src/generate_data.py
+    python src/train.py
+    python src/evaluate.py
 ```
 
-Optional:
+Inference:
 
-* use pretrained weights at
-  `checkpoints/sequential/best_model.pt`
-
-Notes:
-
-* CPU execution is supported
-* CUDA is optional
+```bash
+    python src/infer.py --input_npy sample_curve.npy
+```
 
 ---
 
 ## Design Summary
 
-* realistic synthetic data > toy data
-* robustness to noise is prioritized
-* threshold tuning reflects real-world usage
-* full pipeline reproducibility is enforced
-
----
-
-## Future Work
-
-* incorporate physically grounded simulators (e.g., PyTransit)
-* improve noise modeling
-* explore sequence models (RNN / Transformer)
-* calibrate probabilities for deployment scenarios
-
----
+- realistic synthetic data > toy data
+- robustness to noise is critical
+- threshold tuning is essential for deployment

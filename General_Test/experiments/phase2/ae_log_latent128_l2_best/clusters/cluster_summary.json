@@ -1,0 +1,100 @@
+{
+  "clusters": [
+    {
+      "cluster_id": 0,
+      "count": 28,
+      "example_filenames": [
+        "planet0_00226_1250.fits",
+        "planet23_00668_1250.fits",
+        "planet16_00614_1250.fits",
+        "planet3_00078_1250.fits",
+        "planet14_00528_1250.fits"
+      ],
+      "distance_to_centroid": {
+        "min": 0.1351320445537567,
+        "max": 0.4740220606327057,
+        "mean": 0.28824979066848755,
+        "std": 0.09732396900653839
+      },
+      "artifacts": {
+        "topk_grid": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_0_topk.png",
+        "random_grid": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_0_random.png",
+        "mean_image": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_0_mean.png",
+        "radial_profile_csv": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_0_radial_profile.csv",
+        "radial_profile_plot": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_0_radial_profile.png"
+      }
+    },
+    {
+      "cluster_id": 1,
+      "count": 61,
+      "example_filenames": [
+        "planet60_00482_1250.fits",
+        "planet102_00142_1250.fits",
+        "planet102_00188_1250.fits",
+        "planet8_00214_1250.fits",
+        "planet8_00248_1250.fits"
+      ],
+      "distance_to_centroid": {
+        "min": 0.15671420097351074,
+        "max": 0.8155979514122009,
+        "mean": 0.32839035987854004,
+        "std": 0.131034255027771
+      },
+      "artifacts": {
+        "topk_grid": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_1_topk.png",
+        "random_grid": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_1_random.png",
+        "mean_image": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_1_mean.png",
+        "radial_profile_csv": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_1_radial_profile.csv",
+        "radial_profile_plot": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_1_radial_profile.png"
+      }
+    },
+    {
+      "cluster_id": 2,
+      "count": 34,
+      "example_filenames": [
+        "planet68_00920_1250.fits",
+        "planet15_00186_1250.fits",
+        "planet30_00166_1250.fits",
+        "planet6_00638_1250.fits",
+        "planet100_00580_1250.fits"
+      ],
+      "distance_to_centroid": {
+        "min": 0.22493186593055725,
+        "max": 0.6549422740936279,
+        "mean": 0.411937952041626,
+        "std": 0.12156759947538376
+      },
+      "artifacts": {
+        "topk_grid": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_2_topk.png",
+        "random_grid": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_2_random.png",
+        "mean_image": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_2_mean.png",
+        "radial_profile_csv": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_2_radial_profile.csv",
+        "radial_profile_plot": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_2_radial_profile.png"
+      }
+    },
+    {
+      "cluster_id": 3,
+      "count": 27,
+      "example_filenames": [
+        "planet86_00414_1250.fits",
+        "planet86_00602_1250.fits",
+        "planet55_00320_1250.fits",
+        "planet22_00416_1250.fits",
+        "planet55_00394_1250.fits"
+      ],
+      "distance_to_centroid": {
+        "min": 0.08702775835990906,
+        "max": 0.4714481234550476,
+        "mean": 0.2733902633190155,
+        "std": 0.10097832977771759
+      },
+      "artifacts": {
+        "topk_grid": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_3_topk.png",
+        "random_grid": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_3_random.png",
+        "mean_image": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_3_mean.png",
+        "radial_profile_csv": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_3_radial_profile.csv",
+        "radial_profile_plot": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_3_radial_profile.png"
+      }
+    }
+  ]
+}

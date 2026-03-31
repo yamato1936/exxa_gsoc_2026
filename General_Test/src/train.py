@@ -6,13 +6,16 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 try:
     from .data import FitsImageDataset, save_sample_input_grid, scan_fits_directory, train_val_split
     from .model import ConvAutoencoder
+    from .preprocess import PREPROCESS_MODES, build_preprocess_config
     from .utils import (
-        ensure_dir,
+        checkpoint_dir_for_run,
+        experiment_root_dir,
         project_path,
         resolve_device,
         save_json,
@@ -20,12 +23,15 @@ try:
         save_reconstruction_examples,
         seed_everything,
         seed_worker,
+        stage_output_dir,
     )
 except ImportError:
     from data import FitsImageDataset, save_sample_input_grid, scan_fits_directory, train_val_split
     from model import ConvAutoencoder
+    from preprocess import PREPROCESS_MODES, build_preprocess_config
     from utils import (
-        ensure_dir,
+        checkpoint_dir_for_run,
+        experiment_root_dir,
         project_path,
         resolve_device,
         save_json,
@@ -33,14 +39,20 @@ except ImportError:
         save_reconstruction_examples,
         seed_everything,
         seed_worker,
+        stage_output_dir,
     )
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Train the General Test autoencoder baseline.")
+    parser = argparse.ArgumentParser(description="Train the General Test autoencoder.")
     parser.add_argument("--data_dir", required=True, help="Directory containing FITS files.")
     parser.add_argument("--output_dir", default=project_path("outputs", "general"))
     parser.add_argument("--checkpoint_dir", default=project_path("checkpoints", "general"))
+    parser.add_argument(
+        "--experiment_name",
+        default=None,
+        help="Optional Phase 2 experiment name. When set, outputs go under outputs/general/phase2/<experiment_name>/.",
+    )
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -51,14 +63,115 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default="auto")
     parser.add_argument("--val_ratio", type=float, default=0.2)
     parser.add_argument("--patience", type=int, default=7)
+    parser.add_argument("--preprocess_mode", choices=PREPROCESS_MODES, default="percentile_minmax")
     parser.add_argument("--lower_percentile", type=float, default=1.0)
-    parser.add_argument("--upper_percentile", type=float, default=99.0)
+    parser.add_argument("--upper_percentile", type=float, default=99.5)
+    parser.add_argument("--robust_clip", type=float, default=5.0)
     parser.add_argument(
-        "--disable_augmentation",
+        "--recon_loss",
+        choices=["mse", "l1"],
+        default="mse",
+        help="Base reconstruction loss used for autoencoder training.",
+    )
+
+    augmentation_group = parser.add_mutually_exclusive_group()
+    augmentation_group.add_argument(
+        "--use_augmentation",
+        dest="use_augmentation",
         action="store_true",
-        help="Disable the default light flip/rotation augmentation during training.",
+        help="Enable random rotation, horizontal flip, and vertical flip during training.",
+    )
+    augmentation_group.add_argument(
+        "--disable_augmentation",
+        dest="use_augmentation",
+        action="store_false",
+        help="Disable training-time augmentation.",
+    )
+    parser.set_defaults(use_augmentation=True)
+    parser.add_argument(
+        "--rotation_deg",
+        type=float,
+        default=90.0,
+        help="Maximum absolute rotation angle used during training augmentation.",
+    )
+    parser.add_argument(
+        "--use_edge_loss",
+        action="store_true",
+        help="Add a Sobel-gradient reconstruction term to encourage sharper structural reconstructions.",
+    )
+    parser.add_argument(
+        "--edge_loss_weight",
+        type=float,
+        default=0.1,
+        help="Weight for the optional Sobel edge reconstruction loss.",
     )
     return parser
+
+
+class AutoencoderLoss(nn.Module):
+    def __init__(
+        self,
+        *,
+        recon_loss: str = "mse",
+        use_edge_loss: bool = False,
+        edge_loss_weight: float = 0.1,
+    ) -> None:
+        super().__init__()
+        self.recon_loss_name = str(recon_loss)
+        self.use_edge_loss = bool(use_edge_loss)
+        self.edge_loss_weight = float(edge_loss_weight)
+        if self.recon_loss_name == "mse":
+            self.reconstruction_loss = nn.MSELoss()
+        elif self.recon_loss_name == "l1":
+            self.reconstruction_loss = nn.L1Loss()
+        else:
+            raise ValueError(f"Unsupported recon_loss: {recon_loss}")
+
+        sobel_x = torch.tensor(
+            [[1.0, 0.0, -1.0], [2.0, 0.0, -2.0], [1.0, 0.0, -1.0]],
+            dtype=torch.float32,
+        ).view(1, 1, 3, 3)
+        sobel_y = torch.tensor(
+            [[1.0, 2.0, 1.0], [0.0, 0.0, 0.0], [-1.0, -2.0, -1.0]],
+            dtype=torch.float32,
+        ).view(1, 1, 3, 3)
+        self.register_buffer("sobel_x", sobel_x)
+        self.register_buffer("sobel_y", sobel_y)
+
+    def _sobel_gradients(self, tensor: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        grad_x = F.conv2d(tensor, self.sobel_x, padding=1)
+        grad_y = F.conv2d(tensor, self.sobel_y, padding=1)
+        return grad_x, grad_y
+
+    def forward(
+        self,
+        reconstructions: torch.Tensor,
+        targets: torch.Tensor,
+    ) -> dict[str, torch.Tensor]:
+        recon_loss = self.reconstruction_loss(reconstructions, targets)
+
+        if self.use_edge_loss:
+            grad_x_pred, grad_y_pred = self._sobel_gradients(reconstructions)
+            grad_x_target, grad_y_target = self._sobel_gradients(targets)
+            edge_loss = F.l1_loss(grad_x_pred, grad_x_target) + F.l1_loss(
+                grad_y_pred,
+                grad_y_target,
+            )
+            total_loss = recon_loss + self.edge_loss_weight * edge_loss
+        else:
+            edge_loss = torch.zeros(
+                (),
+                device=reconstructions.device,
+                dtype=reconstructions.dtype,
+            )
+            total_loss = recon_loss
+
+        return {
+            "loss": total_loss,
+            "total_loss": total_loss.detach(),
+            "recon_loss": recon_loss.detach(),
+            "edge_loss": edge_loss.detach(),
+        }
 
 
 def run_epoch(
@@ -67,10 +180,12 @@ def run_epoch(
     device: torch.device,
     criterion: nn.Module,
     optimizer: torch.optim.Optimizer | None = None,
-) -> float:
+) -> dict[str, float]:
     is_training = optimizer is not None
     model.train(is_training)
-    losses: list[float] = []
+    total_losses: list[float] = []
+    recon_losses: list[float] = []
+    edge_losses: list[float] = []
 
     for batch in loader:
         images = batch["image"].to(device, non_blocking=True)
@@ -79,15 +194,29 @@ def run_epoch(
             optimizer.zero_grad(set_to_none=True)
 
         reconstructions = model(images)
-        loss = criterion(reconstructions, images)
+        loss_outputs = criterion(reconstructions, images)
+        loss = loss_outputs["loss"]
 
         if is_training:
             loss.backward()
             optimizer.step()
 
-        losses.append(float(loss.item()))
+        total_losses.append(float(loss_outputs["total_loss"].item()))
+        recon_losses.append(float(loss_outputs["recon_loss"].item()))
+        edge_losses.append(float(loss_outputs["edge_loss"].item()))
 
-    return float(np.mean(losses)) if losses else float("nan")
+    if not total_losses:
+        return {
+            "total_loss": float("nan"),
+            "recon_loss": float("nan"),
+            "edge_loss": float("nan"),
+        }
+
+    return {
+        "total_loss": float(np.mean(total_losses)),
+        "recon_loss": float(np.mean(recon_losses)),
+        "edge_loss": float(np.mean(edge_losses)),
+    }
 
 
 def collect_reconstructions(
@@ -111,39 +240,55 @@ def collect_reconstructions(
 def train_autoencoder(args: argparse.Namespace) -> dict[str, str | float | int]:
     seed_everything(args.seed)
 
-    output_dir = ensure_dir(args.output_dir)
-    checkpoint_dir = ensure_dir(args.checkpoint_dir)
+    experiment_root = experiment_root_dir(args.output_dir, args.experiment_name)
+    output_dir = stage_output_dir(args.output_dir, args.experiment_name, "train")
+    checkpoint_dir = checkpoint_dir_for_run(args.output_dir, args.checkpoint_dir, args.experiment_name)
     checkpoint_path = checkpoint_dir / "best_autoencoder.pt"
     device = resolve_device(args.device)
+    augmentation_enabled = bool(args.use_augmentation)
+    preprocess_config = build_preprocess_config(
+        mode=args.preprocess_mode,
+        lower_percentile=args.lower_percentile,
+        upper_percentile=args.upper_percentile,
+        robust_clip=args.robust_clip,
+        img_size=args.img_size,
+    )
 
     records, skipped_files = scan_fits_directory(args.data_dir)
     if not records:
         raise SystemExit("No valid FITS files were found in the provided data directory.")
 
     train_records, val_records, split_info = train_val_split(records, args.val_ratio, args.seed)
-    augmentation_enabled = not args.disable_augmentation
 
     save_sample_input_grid(
         records=records,
         output_path=output_dir / "sample_inputs.png",
         img_size=args.img_size,
+        preprocess_mode=args.preprocess_mode,
         lower_percentile=args.lower_percentile,
         upper_percentile=args.upper_percentile,
+        robust_clip=args.robust_clip,
     )
 
     train_dataset = FitsImageDataset(
         train_records,
         img_size=args.img_size,
+        preprocess_mode=args.preprocess_mode,
         lower_percentile=args.lower_percentile,
         upper_percentile=args.upper_percentile,
+        robust_clip=args.robust_clip,
         augment=augmentation_enabled,
+        rotation_deg=args.rotation_deg,
     )
     val_dataset = FitsImageDataset(
         val_records,
         img_size=args.img_size,
+        preprocess_mode=args.preprocess_mode,
         lower_percentile=args.lower_percentile,
         upper_percentile=args.upper_percentile,
+        robust_clip=args.robust_clip,
         augment=False,
+        rotation_deg=0.0,
     )
 
     generator = torch.Generator()
@@ -160,11 +305,15 @@ def train_autoencoder(args: argparse.Namespace) -> dict[str, str | float | int]:
 
     model = ConvAutoencoder(input_size=args.img_size, latent_dim=args.latent_dim).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    criterion = nn.MSELoss()
+    criterion = AutoencoderLoss(
+        recon_loss=args.recon_loss,
+        use_edge_loss=args.use_edge_loss,
+        edge_loss_weight=args.edge_loss_weight,
+    ).to(device)
 
     print(
         f"Training on {len(train_records)} images with validation on {len(val_records)} images "
-        f"using device={device}."
+        f"using device={device}. Outputs: {output_dir}"
     )
 
     best_val_loss = float("inf")
@@ -173,24 +322,37 @@ def train_autoencoder(args: argparse.Namespace) -> dict[str, str | float | int]:
     history: list[dict[str, float | int]] = []
 
     for epoch in range(1, args.epochs + 1):
-        train_loss = run_epoch(model, train_loader, device, criterion, optimizer=optimizer)
-        val_loss = run_epoch(model, val_loader, device, criterion, optimizer=None)
+        train_metrics = run_epoch(model, train_loader, device, criterion, optimizer=optimizer)
+        val_metrics = run_epoch(model, val_loader, device, criterion, optimizer=None)
 
         history.append(
             {
                 "epoch": epoch,
-                "train_loss": float(train_loss),
-                "val_loss": float(val_loss),
+                "train_loss": float(train_metrics["total_loss"]),
+                "val_loss": float(val_metrics["total_loss"]),
+                "train_recon_loss": float(train_metrics["recon_loss"]),
+                "val_recon_loss": float(val_metrics["recon_loss"]),
+                "train_edge_loss": float(train_metrics["edge_loss"]),
+                "val_edge_loss": float(val_metrics["edge_loss"]),
             }
         )
 
-        print(
+        log_message = (
             f"Epoch {epoch:02d}/{args.epochs:02d} | "
-            f"train_loss={train_loss:.6f} | val_loss={val_loss:.6f}"
+            f"train_loss={train_metrics['total_loss']:.6f} | "
+            f"val_loss={val_metrics['total_loss']:.6f} | "
+            f"train_recon={train_metrics['recon_loss']:.6f} | "
+            f"val_recon={val_metrics['recon_loss']:.6f}"
         )
+        if args.use_edge_loss:
+            log_message += (
+                f" | train_edge={train_metrics['edge_loss']:.6f}"
+                f" | val_edge={val_metrics['edge_loss']:.6f}"
+            )
+        print(log_message)
 
-        if val_loss < best_val_loss - 1e-6:
-            best_val_loss = float(val_loss)
+        if val_metrics["total_loss"] < best_val_loss - 1e-6:
+            best_val_loss = float(val_metrics["total_loss"])
             best_epoch = epoch
             epochs_without_improvement = 0
             torch.save(
@@ -201,9 +363,23 @@ def train_autoencoder(args: argparse.Namespace) -> dict[str, str | float | int]:
                     "config": {
                         "input_size": int(args.img_size),
                         "latent_dim": int(args.latent_dim),
+                        "preprocess_mode": args.preprocess_mode,
                         "lower_percentile": float(args.lower_percentile),
                         "upper_percentile": float(args.upper_percentile),
+                        "robust_clip": float(args.robust_clip),
+                        "recon_loss": args.recon_loss,
+                        "preprocess": preprocess_config,
                         "augmentation_enabled": bool(augmentation_enabled),
+                        "augmentation": {
+                            "enabled": bool(augmentation_enabled),
+                            "rotation_deg": float(args.rotation_deg),
+                            "horizontal_flip": True,
+                            "vertical_flip": True,
+                        },
+                        "loss": {
+                            "use_edge_loss": bool(args.use_edge_loss),
+                            "edge_loss_weight": float(args.edge_loss_weight),
+                        },
                     },
                 },
                 checkpoint_path,
@@ -244,26 +420,38 @@ def train_autoencoder(args: argparse.Namespace) -> dict[str, str | float | int]:
 
     dataset_summary = {
         "data_dir": str(Path(args.data_dir).resolve()),
+        "experiment_name": args.experiment_name,
+        "experiment_root": str(experiment_root),
+        "train_output_dir": str(output_dir),
+        "checkpoint_path": str(checkpoint_path),
         "num_discovered_fits_files": len(records) + len(skipped_files),
         "num_valid_files": len(records),
         "num_skipped_files": len(skipped_files),
         "skipped_files": skipped_files,
         "split": split_info,
         "normalization": {
-            "strategy": "per-image percentile clipping then min-max scaling",
+            "mode": args.preprocess_mode,
             "lower_percentile": float(args.lower_percentile),
             "upper_percentile": float(args.upper_percentile),
+            "robust_clip": float(args.robust_clip),
             "output_range": [0.0, 1.0],
         },
+        "reconstruction_loss": args.recon_loss,
         "image_size_used_for_training": int(args.img_size),
         "latent_dim": int(args.latent_dim),
         "augmentation": {
             "enabled": bool(augmentation_enabled),
-            "details": "random horizontal/vertical flips and random 90-degree rotations",
+            "rotation_deg": float(args.rotation_deg),
+            "horizontal_flip": True,
+            "vertical_flip": True,
         },
-        "checkpoint_path": str(checkpoint_path),
+        "loss": {
+            "use_edge_loss": bool(args.use_edge_loss),
+            "edge_loss_weight": float(args.edge_loss_weight),
+        },
         "sample_input_figure": str(output_dir / "sample_inputs.png"),
         "reconstruction_figure": str(output_dir / "reconstruction_examples.png"),
+        "loss_curve_figure": str(output_dir / "loss_curve.png"),
     }
     save_json(dataset_summary, output_dir / "dataset_summary.json")
 
@@ -277,6 +465,7 @@ def train_autoencoder(args: argparse.Namespace) -> dict[str, str | float | int]:
         "best_val_loss": float(best_val_loss),
         "best_epoch": int(best_epoch),
         "num_valid_files": len(records),
+        "output_dir": str(output_dir),
     }
 
 

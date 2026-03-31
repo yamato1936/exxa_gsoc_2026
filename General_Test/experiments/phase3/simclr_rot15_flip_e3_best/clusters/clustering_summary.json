@@ -1,0 +1,38 @@
+{
+  "experiment_name": null,
+  "experiment_root": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug",
+  "data_dir": null,
+  "checkpoint_path": "/home/toshi/GSoC/outputs/general/phase3/phase3/debug_simclr/checkpoints/best_contrastive.pt",
+  "num_images": 150,
+  "num_skipped_files": 0,
+  "skipped_files": [],
+  "latent_dimension": 128,
+  "clustering_method": "kmeans",
+  "number_of_clusters": 4,
+  "embedding_method_requested": "umap",
+  "embedding_method_used": "umap",
+  "preprocess": {
+    "mode": "percentile_minmax",
+    "lower_percentile": 1.0,
+    "upper_percentile": 99.5,
+    "robust_clip": 5.0,
+    "img_size": 256
+  },
+  "cluster_sizes": {
+    "0": 40,
+    "1": 38,
+    "2": 33,
+    "3": 39
+  },
+  "artifacts": {
+    "latent_path": "outputs/general/phase3/phase3/debug_simclr/latents/phase3/simclr_rot30_latent128/latents/latent_vectors.npy",
+    "metadata_csv": "outputs/general/phase3/phase3/debug_simclr/latents/phase3/simclr_rot30_latent128/latents/latent_metadata.csv",
+    "metadata_json": "outputs/general/phase3/phase3/debug_simclr/latents/phase3/simclr_rot30_latent128/latents/latent_metadata.json",
+    "sample_ids_path": "outputs/general/phase3/phase3/debug_simclr/latents/phase3/simclr_rot30_latent128/latents/sample_ids.npy",
+    "cluster_labels": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_labels.npy",
+    "assignments_csv": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_assignments.csv",
+    "embedding_plot": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/umap.png",
+    "cluster_summary_json": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_summary.json",
+    "radial_profiles_plot": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/radial_profiles.png"
+  }
+}

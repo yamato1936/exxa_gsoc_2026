@@ -1,0 +1,46 @@
+{
+  "data_dir": "/home/toshi/GSoC/data/fits",
+  "checkpoint_path": "/home/toshi/GSoC/outputs/general/phase3/phase3/debug_simclr/checkpoints/best_contrastive.pt",
+  "num_images": 150,
+  "num_skipped_files": 0,
+  "skipped_files": [],
+  "preprocess": {
+    "mode": "log_minmax",
+    "lower_percentile": 1.0,
+    "upper_percentile": 99.5,
+    "robust_clip": 5.0,
+    "img_size": 256
+  },
+  "model": {
+    "input_size": 256,
+    "latent_dim": 128,
+    "projection_dim": 64
+  },
+  "latent_stats": {
+    "shape": [
+      150,
+      128
+    ],
+    "min": -0.22421753406524658,
+    "max": 0.2719140350818634,
+    "mean": -0.0010762425372377038,
+    "std": 0.0883817970752716
+  },
+  "artifacts": {
+    "latent_path": "outputs/general/phase3/phase3/debug_simclr/latents/phase3/simclr_rot30_latent128/latents/latent_vectors.npy",
+    "metadata_csv": "outputs/general/phase3/phase3/debug_simclr/latents/phase3/simclr_rot30_latent128/latents/latent_metadata.csv",
+    "metadata_json": "outputs/general/phase3/phase3/debug_simclr/latents/phase3/simclr_rot30_latent128/latents/latent_metadata.json",
+    "sample_ids_path": "outputs/general/phase3/phase3/debug_simclr/latents/phase3/simclr_rot30_latent128/latents/sample_ids.npy"
+  },
+  "phase": "phase3",
+  "contrastive": {
+    "temperature": 0.1,
+    "l2_normalize_latents": true,
+    "latent_norm_stats": {
+      "min": 0.9999998807907104,
+      "max": 1.0000001192092896,
+      "mean": 1.0,
+      "std": 4.380029139383623e-08
+    }
+  }
+}

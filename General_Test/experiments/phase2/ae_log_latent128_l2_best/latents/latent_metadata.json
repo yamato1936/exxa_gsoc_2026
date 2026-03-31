@@ -1,0 +1,34 @@
+{
+  "data_dir": "/home/toshi/GSoC/data/fits",
+  "checkpoint_path": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/checkpoints/best_autoencoder.pt",
+  "num_images": 150,
+  "num_skipped_files": 0,
+  "skipped_files": [],
+  "preprocess": {
+    "mode": "log_minmax",
+    "lower_percentile": 1.0,
+    "upper_percentile": 99.5,
+    "robust_clip": 5.0,
+    "img_size": 256
+  },
+  "model": {
+    "input_size": 256,
+    "latent_dim": 128
+  },
+  "latent_stats": {
+    "shape": [
+      150,
+      128
+    ],
+    "min": -11.120590209960938,
+    "max": 11.696104049682617,
+    "mean": 0.04625668376684189,
+    "std": 2.796984910964966
+  },
+  "artifacts": {
+    "latent_path": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/latents/latent_vectors.npy",
+    "metadata_csv": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/latents/latent_metadata.csv",
+    "metadata_json": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/latents/latent_metadata.json",
+    "sample_ids_path": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/latents/sample_ids.npy"
+  }
+}

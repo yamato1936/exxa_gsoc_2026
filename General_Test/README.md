@@ -1,124 +1,110 @@
-# General Test Baseline
+# General Test — Representation Learning for Disk Clustering
 
-## Overview
+## Goal
 
-This baseline implements a clean unsupervised pipeline for the EXXA General Test:
+Cluster protoplanetary disk images based on morphology without labels.
 
-1. recursively load synthetic ALMA `.fits` files
-2. extract only the first image plane from each cube
-3. apply deterministic preprocessing
-4. train a convolutional autoencoder
-5. cluster the latent vectors with k-means
-6. save 2D embeddings and representative examples per cluster
+---
 
-The goal here is clarity and reproducibility rather than a highly optimized method.
+## Pipeline
 
-## Expected Data
+FITS → preprocessing → encoder → latent → clustering
 
-Each FITS file is expected to contain a 4-layer continuum cube, typically shaped like `[4, 600, 600]` or a close variant with singleton dimensions. The pipeline:
+---
 
-- safely squeezes singleton axes
-- takes only the first slice
-- skips corrupted or unreadable files with warnings
-- records skipped files in the output JSON summaries
+## Phase 2 — Autoencoder (Baseline)
 
-## Preprocessing
+- Objective: reconstruction
+- Latent dim: 128
+- L2 normalization
 
-Each image is preprocessed independently:
+Result:
+- Silhouette: 0.362
 
-- convert to `float32`
-- replace `NaN` and `inf` values safely
-- clip intensities to the 1st and 99th percentiles
-- scale the clipped image to `[0, 1]`
-- resize to `img_size` for the autoencoder input
+---
 
-This same preprocessing is reused during clustering so training and analysis stay consistent.
+## Phase 3 — Contrastive Learning (SimCLR)
 
-## Baseline Model
+### Method
 
-The model is a small convolutional autoencoder:
+- SimCLR with augmentation
 
-- 4 downsampling convolution blocks in the encoder
-- latent dimension configurable with `--latent_dim`
-- mirrored transposed-convolution decoder
-- sigmoid output because inputs are normalized to `[0, 1]`
+### Augmentation
 
-Light training-time augmentation is enabled by default:
+- rotation (±15°)
+- horizontal / vertical flip
 
-- random horizontal flip
-- random vertical flip
-- random 90-degree rotation
+---
 
-Disable it with `--disable_augmentation` if you want a stricter deterministic baseline.
+## Key Result
 
-## Run From Repository Root
+| Epoch | Silhouette |
+|------|-----------|
+| 3 | 0.459 (best) |
+| 5 | 0.382 |
+| 20 | 0.355 |
 
-Train the autoencoder:
+---
 
-```bash
-python3 General_Test/src/train.py --data_dir path/to/fits_dir
-```
+## Why It Works
 
-Cluster the latent vectors with the trained encoder:
+Early contrastive training captures global structure.
 
-```bash
-python3 General_Test/src/cluster.py --data_dir path/to/fits_dir --checkpoint_path checkpoints/general/best_autoencoder.pt
-```
+Longer training shifts toward instance discrimination,
+which degrades clustering performance.
 
-Run the full baseline in one command:
+---
+
+## Final Model
+
+simclr_rot15_flip_e3_best
+
+---
+
+## Reproducibility
+
+### Train
 
 ```bash
-python3 General_Test/src/run_baseline.py --data_dir path/to/fits_dir
+    python src/train_contrastive.py \
+      --data_dir ../data/fits \
+      --output_dir experiments/phase3 \
+      --experiment_name simclr_rot15_flip_e3_best \
+      --batch_size 16 \
+      --epochs 3 \
+      --latent_dim 128 \
+      --projection_dim 64 \
+      --temperature 0.1 \
+      --preprocess_mode log_minmax \
+      --use_augmentation \
+      --rotation_deg 15 \
+      --hflip_prob 0.5 \
+      --vflip_prob 0.5
 ```
 
-## Useful Options
-
-Common options for training:
+### Extract latents
 
 ```bash
-python3 General_Test/src/train.py \
-  --data_dir path/to/fits_dir \
-  --epochs 40 \
-  --batch_size 16 \
-  --latent_dim 64 \
-  --img_size 256 \
-  --device auto
+    python src/extract_contrastive_latents.py \
+      --data_dir ../data/fits \
+      --checkpoint_path experiments/phase3/simclr_rot15_flip_e3_best/checkpoints/best_contrastive.pt \
+      --output_dir experiments/phase3/simclr_rot15_flip_e3_best/latents \
+      --preprocess_mode log_minmax \
+      --lower_percentile 1.0 \
+      --upper_percentile 99.5 \
+      --l2_normalize_latents
 ```
 
-Common options for clustering:
+
+### Clustering
+
 
 ```bash
-python3 General_Test/src/cluster.py \
-  --data_dir path/to/fits_dir \
-  --checkpoint_path checkpoints/general/best_autoencoder.pt \
-  --n_clusters 4 \
-  --embedding_method umap
+    python src/cluster.py \
+      --latent_path experiments/phase3/simclr_rot15_flip_e3_best/latents/phase3/simclr_rot30_latent128/latents/latent_vectors.npy \
+      --metadata_csv experiments/phase3/simclr_rot15_flip_e3_best/latents/phase3/simclr_rot30_latent128/latents/latent_metadata.csv \
+      --metadata_json experiments/phase3/simclr_rot15_flip_e3_best/latents/phase3/simclr_rot30_latent128/latents/latent_metadata.json \
+      --output_dir experiments/phase3/simclr_rot15_flip_e3_best/clusters \
+      --phase phase3 \
+      --n_clusters 4
 ```
-
-If UMAP import fails at runtime, the script automatically falls back to PCA and records that in `clustering_summary.json`.
-
-## Outputs
-
-Training writes:
-
-- `checkpoints/general/best_autoencoder.pt`
-- `outputs/general/sample_inputs.png`
-- `outputs/general/dataset_summary.json`
-- `outputs/general/train_history.json`
-- `outputs/general/loss_curve.png`
-- `outputs/general/reconstruction_examples.png`
-
-Clustering writes:
-
-- `outputs/general/latent_vectors.npy`
-- `outputs/general/cluster_labels.npy`
-- `outputs/general/cluster_assignments.csv`
-- `outputs/general/latent_clusters.png`
-- `outputs/general/clustering_summary.json`
-- `outputs/general/cluster_<id>_examples.png`
-
-## Notes
-
-- CPU execution is supported.
-- CUDA is used automatically when available unless `--device cpu` is passed.
-- This is an autoencoder-plus-k-means baseline only. Contrastive learning and stronger invariance methods are intentionally left for later iterations.

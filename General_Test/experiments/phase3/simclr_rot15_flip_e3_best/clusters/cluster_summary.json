@@ -1,0 +1,100 @@
+{
+  "clusters": [
+    {
+      "cluster_id": 0,
+      "count": 40,
+      "example_filenames": [
+        "planet3_00654_1250.fits",
+        "planet40_00370_1250.fits",
+        "planet6_00370_1250.fits",
+        "planet68_00640_1250.fits",
+        "planet40_00352_1250.fits"
+      ],
+      "distance_to_centroid": {
+        "min": 0.06472603976726532,
+        "max": 0.5782701373100281,
+        "mean": 0.25391310453414917,
+        "std": 0.1229197233915329
+      },
+      "artifacts": {
+        "topk_grid": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_0_topk.png",
+        "random_grid": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_0_random.png",
+        "mean_image": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_0_mean.png",
+        "radial_profile_csv": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_0_radial_profile.csv",
+        "radial_profile_plot": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_0_radial_profile.png"
+      }
+    },
+    {
+      "cluster_id": 1,
+      "count": 38,
+      "example_filenames": [
+        "planet22_00416_1250.fits",
+        "planet7_00730_1250.fits",
+        "planet72_00164_1250.fits",
+        "planet34_00334_1250.fits",
+        "planet101_00972_1250.fits"
+      ],
+      "distance_to_centroid": {
+        "min": 0.10300997644662857,
+        "max": 0.5218331813812256,
+        "mean": 0.30613720417022705,
+        "std": 0.09830924868583679
+      },
+      "artifacts": {
+        "topk_grid": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_1_topk.png",
+        "random_grid": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_1_random.png",
+        "mean_image": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_1_mean.png",
+        "radial_profile_csv": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_1_radial_profile.csv",
+        "radial_profile_plot": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_1_radial_profile.png"
+      }
+    },
+    {
+      "cluster_id": 2,
+      "count": 33,
+      "example_filenames": [
+        "planet8_00100_1250.fits",
+        "planet8_00128_1250.fits",
+        "planet8_00214_1250.fits",
+        "planet8_00248_1250.fits",
+        "planet2_00154_1250.fits"
+      ],
+      "distance_to_centroid": {
+        "min": 0.015523646026849747,
+        "max": 0.26526984572410583,
+        "mean": 0.10450872778892517,
+        "std": 0.0607486367225647
+      },
+      "artifacts": {
+        "topk_grid": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_2_topk.png",
+        "random_grid": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_2_random.png",
+        "mean_image": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_2_mean.png",
+        "radial_profile_csv": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_2_radial_profile.csv",
+        "radial_profile_plot": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_2_radial_profile.png"
+      }
+    },
+    {
+      "cluster_id": 3,
+      "count": 39,
+      "example_filenames": [
+        "planet38_00948_1250.fits",
+        "planet38_00980_1250.fits",
+        "planet18_00114_1250.fits",
+        "planet13_00302_1250.fits",
+        "planet13_00098_1250.fits"
+      ],
+      "distance_to_centroid": {
+        "min": 0.05335190147161484,
+        "max": 0.4361506402492523,
+        "mean": 0.17453917860984802,
+        "std": 0.08613697439432144
+      },
+      "artifacts": {
+        "topk_grid": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_3_topk.png",
+        "random_grid": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_3_random.png",
+        "mean_image": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_3_mean.png",
+        "radial_profile_csv": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_3_radial_profile.csv",
+        "radial_profile_plot": "outputs/general/phase3/phase3/debug_simclr/clusters_phase3_debug/cluster_3_radial_profile.png"
+      }
+    }
+  ]
+}

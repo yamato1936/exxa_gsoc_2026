@@ -1,0 +1,43 @@
+{
+  "data_dir": "/home/toshi/GSoC/data/fits",
+  "experiment_name": "log_latent128",
+  "experiment_root": "/home/toshi/GSoC/outputs/general/phase2/log_latent128",
+  "train_output_dir": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/train",
+  "checkpoint_path": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/checkpoints/best_autoencoder.pt",
+  "num_discovered_fits_files": 150,
+  "num_valid_files": 150,
+  "num_skipped_files": 0,
+  "skipped_files": [],
+  "split": {
+    "num_train": 120,
+    "num_val": 30,
+    "val_ratio": 0.2,
+    "validation_reuses_training": false
+  },
+  "normalization": {
+    "mode": "log_minmax",
+    "lower_percentile": 1.0,
+    "upper_percentile": 99.5,
+    "robust_clip": 5.0,
+    "output_range": [
+      0.0,
+      1.0
+    ]
+  },
+  "reconstruction_loss": "mse",
+  "image_size_used_for_training": 256,
+  "latent_dim": 128,
+  "augmentation": {
+    "enabled": false,
+    "rotation_deg": 90.0,
+    "horizontal_flip": true,
+    "vertical_flip": true
+  },
+  "loss": {
+    "use_edge_loss": false,
+    "edge_loss_weight": 0.1
+  },
+  "sample_input_figure": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/train/sample_inputs.png",
+  "reconstruction_figure": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/train/reconstruction_examples.png",
+  "loss_curve_figure": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/train/loss_curve.png"
+}

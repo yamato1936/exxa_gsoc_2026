@@ -1,0 +1,38 @@
+{
+  "experiment_name": null,
+  "experiment_root": "outputs/general/phase2/log_latent128_l2norm/clusters",
+  "data_dir": null,
+  "checkpoint_path": "/home/toshi/GSoC/outputs/general/phase2/log_latent128/checkpoints/best_autoencoder.pt",
+  "num_images": 150,
+  "num_skipped_files": 0,
+  "skipped_files": [],
+  "latent_dimension": 128,
+  "clustering_method": "kmeans",
+  "number_of_clusters": 4,
+  "embedding_method_requested": "umap",
+  "embedding_method_used": "umap",
+  "preprocess": {
+    "mode": "percentile_minmax",
+    "lower_percentile": 1.0,
+    "upper_percentile": 99.5,
+    "robust_clip": 5.0,
+    "img_size": 256
+  },
+  "cluster_sizes": {
+    "0": 28,
+    "1": 61,
+    "2": 34,
+    "3": 27
+  },
+  "artifacts": {
+    "latent_path": "outputs/general/phase2/log_latent128/latents/latent_vectors_l2norm.npy",
+    "metadata_csv": "outputs/general/phase2/log_latent128/latents/latent_metadata.csv",
+    "metadata_json": "outputs/general/phase2/log_latent128/latents/latent_metadata.json",
+    "sample_ids_path": "outputs/general/phase2/log_latent128/latents/sample_ids.npy",
+    "cluster_labels": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_labels.npy",
+    "assignments_csv": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_assignments.csv",
+    "embedding_plot": "outputs/general/phase2/log_latent128_l2norm/clusters/umap.png",
+    "cluster_summary_json": "outputs/general/phase2/log_latent128_l2norm/clusters/cluster_summary.json",
+    "radial_profiles_plot": "outputs/general/phase2/log_latent128_l2norm/clusters/radial_profiles.png"
+  }
+}
