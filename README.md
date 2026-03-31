@@ -2,209 +2,186 @@
 
 ## Overview
 
-This project tackles two tasks:
+This repository implements end-to-end pipelines for the EXXA GSoC 2026 tests:
 
-- **General Test**: Unsupervised clustering of protoplanetary disk images
-- **Sequential Test**: Transit detection from synthetic light curves
+- General Test: Unsupervised clustering of protoplanetary disk images (FITS)
+- Sequential Test: Transit detection from synthetic light curves
 
-The focus is on learning **meaningful representations**, not just fitting models.
-
----
-
-## Key Idea
-
-> Good clustering requires geometry-aware representations, not just reconstruction.
-
-We compare:
-
-- Autoencoder (reconstruction-based)
-- Contrastive learning (SimCLR)
+The goal is to learn representations that capture meaningful structure in astronomical data, not just optimize model performance.
 
 ---
 
-## Results (General Test)
+## Design Philosophy
+
+Protoplanetary disks exhibit morphological structures (e.g., rings and gaps) that are linked to planet formation.
+
+These structures are:
+- Spatially localized
+- Invariant to rotation and intensity scaling
+- More important than exact pixel reconstruction
+
+The pipeline is designed to:
+1. Learn compact representations of disk morphology
+2. Cluster disks based on learned features
+3. Analyze whether clusters correspond to physically meaningful structures
+
+---
+
+## General Test — Representation Learning & Clustering
+
+### Approach
+
+Two representation learning methods are compared:
+
+Autoencoder (AE)
+- Objective: pixel-level reconstruction
+- Limitation: sensitive to noise and viewing angle
+
+Contrastive Learning (SimCLR)
+- Objective: instance discrimination with augmentations
+- Advantage: learns invariances and captures morphology
+
+---
+
+### Results
 
 | Method | Silhouette |
 |--------|-----------|
-| Autoencoder (Phase 2) | 0.362 |
-| SimCLR (Phase 3, 3 epochs) | **0.459** |
+| Autoencoder | 0.362 |
+| SimCLR (3 epochs) | 0.459 |
 
-- Clear improvement in cluster separability  
-- Better morphological grouping  
-
----
-
-## Critical Insight
-
-> Longer contrastive training hurts clustering
-
-- 3 epochs → best  
-- 5+ epochs → degradation  
-
-**Reason**
-
-Contrastive learning increasingly focuses on instance discrimination,
-which conflicts with clustering objectives.
+- Improved cluster separability
+- Better grouping by disk structure
 
 ---
 
-## Experiment Progression (General Test)
+### Key Insight
 
-We followed a two-stage approach:
+Contrastive learning improves clustering, but only in early training.
 
-### Phase 2 — Autoencoder baseline
-- Objective: reconstruction
-- Result: silhouette = 0.362
+- 3 epochs → best performance  
+- Longer training → degradation  
 
-### Phase 3 — Contrastive learning (SimCLR)
-- Objective: instance discrimination
-- Result: silhouette = 0.459 (best at 3 epochs)
+Interpretation:
 
-### Key Finding
+Early representations capture global structure,  
+while longer training overfits to instance identity and harms clustering.
 
-Early-stage contrastive representations capture global structure,  
-while longer training overfits to instance identity and degrades clustering.
+---
+
+## Physical Interpretation of Clusters
+
+Clusters are analyzed visually using representative samples:
+
+- Cluster 0:
+  Smooth disks with no clear gaps  
+  → likely no planets
+
+- Cluster 1:
+  Single ring or gap structure  
+  → possible single planet
+
+- Cluster 2:
+  Multiple rings or gaps  
+  → possible multi-planet systems
+
+This suggests that the learned representation captures physically meaningful structures.
+
+---
+
+## Failure Analysis
+
+Observed limitations:
+
+- Sensitivity to viewing angle
+- Low-contrast disks are harder to separate
+- Weak structures may be mis-clustered
+
+Potential improvements:
+
+- Rotation-invariant representations
+- Improved normalization
+- Physics-informed augmentations
 
 ---
 
 ## Visualization
 
-### UMAP projection
+UMAP projection:
 
 ![UMAP](General_Test/experiments/phase3/simclr_rot15_flip_e3_best/clusters/umap.png)
 
-### Cluster mean examples
+Cluster mean examples:
 
 ![Cluster Mean](General_Test/experiments/phase3/simclr_rot15_flip_e3_best/clusters/cluster_0_mean.png)
 
 ---
 
-## Final Selected Models
+## Sequential Test — Transit Detection
 
-### General Test
-- Phase 2: `ae_log_latent128_l2_best`
-- Phase 3: `simclr_rot15_flip_e3_best` (final model)
+### Approach
 
-### Selection Criteria
-- Quantitative: silhouette score
-- Qualitative: UMAP separation and cluster consistency
+- Synthetic light curves generated from transit simulations
+- Model: 1D CNN classifier
+- Task: detect the presence of a planet
 
----
+### Results
 
-## Experiment Artifacts Structure
-
-Each experiment follows a consistent structure:
-
-    experiments/<phase>/<experiment_name>/
-    ├── checkpoints/     # trained model weights
-    ├── train/           # training logs and visualizations
-    ├── latents/         # extracted feature representations
-    ├── clusters/        # clustering results and analysis
-
-### Example
-
-    General_Test/experiments/phase3/simclr_rot15_flip_e3_best/
-
-    ├── checkpoints/
-    │   └── best_contrastive.pt
-
-    ├── train/
-    │   ├── loss_curve.png
-    │   └── train_history.json
-
-    ├── latents/
-    │   ├── latent_vectors.npy
-    │   └── latent_metadata.csv
-
-    ├── clusters/
-    │   ├── umap.png
-    │   ├── cluster_*_mean.png
-    │   └── cluster_summary.json
+- Model successfully detects transit signals under noise conditions
 
 ---
 
 ## Repository Structure
 
-    General_Test/
-    ├── experiments/
-    │   ├── phase2/
-    │   └── phase3/
+General_Test/ 
+- src/ 
+- experiments/
 
-    Sequential_Test/
-    ├── outputs/
+Sequential_Test/ 
+- src/ 
+- outputs/
 
-    archive/
-    data/
-
----
-
-## Directory Details
-
-### General_Test/
-- `src/` : training, feature extraction, clustering
-- `experiments/` : final selected experiments only
-- `run_*.sh` : reproducible experiment scripts
-
-### Sequential_Test/
-- `src/` : training and evaluation pipeline
-- `outputs/` : results (figures, metrics, predictions)
-
-### data/
-- FITS files (excluded via `.gitignore`)
-
-### archive/
-- old or exploratory experiments (not part of final results)
+data/ 
+archive/
 
 ---
 
 ## Quick Start
 
-### General Test (best model)
+### General Test
 
+```bash
 cd General_Test
 
-# extract latents
-```bash
-python src/extract_contrastive_latents.py \
+python src/run_baseline.py \
   --data_dir ../data/fits \
-  --checkpoint_path experiments/phase3/simclr_rot15_flip_e3_best/checkpoints/best_contrastive.pt \
-  --output_dir experiments/phase3/simclr_rot15_flip_e3_best/latents \
-  --preprocess_mode log_minmax \
-  --lower_percentile 1.0 \
-  --upper_percentile 99.5 \
-  --l2_normalize_latents
+  --output_dir experiments/baseline
 ```
-
-# clustering
-```bash
-python src/cluster.py \
-  --latent_path experiments/phase3/simclr_rot15_flip_e3_best/latents/phase3/simclr_rot30_latent128/latents/latent_vectors.npy \
-  --metadata_csv experiments/phase3/simclr_rot15_flip_e3_best/latents/phase3/simclr_rot30_latent128/latents/latent_metadata.csv \
-  --metadata_json experiments/phase3/simclr_rot15_flip_e3_best/latents/phase3/simclr_rot30_latent128/latents/latent_metadata.json \
-  --output_dir experiments/phase3/simclr_rot15_flip_e3_best/clusters \
-  --phase phase3 \
-  --n_clusters 4
-```
-
 ---
 
-## Notes
+### Sequential Test
 
-- Raw FITS data (`data/fits/`) is excluded via `.gitignore`
-- Large artifacts (outputs, checkpoints) are not tracked
+```bash
+cd Sequential_Test
 
+python src/generate_data.py
+python src/train.py
+python src/evaluate.py
+```
 ---
 
 ## Reproducibility
 
-See:
-
-- `General_Test/README.md`  
-- `Sequential_Test/README.md`  
+- Experiments are organized under the experiments directory
+- Each run includes checkpoints, logs, latent representations, and clustering outputs
+- Pipelines can be executed without manual intervention
 
 ---
 
 ## Conclusion
 
-Contrastive learning improves clustering —  
-but only when stopped early.
+- Representation quality is critical for clustering astronomical data
+- Contrastive learning provides better features than reconstruction
+- However, excessive training degrades clustering performance
+
+This work demonstrates that properly learned representations can recover meaningful structure in protoplanetary disks.
